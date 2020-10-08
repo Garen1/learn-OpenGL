@@ -1,29 +1,15 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+#include <GL\glew.h>
+#include <GLFW\glfw3.h>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
-#define ASSERT(x) if (!(x)) __debugbreak();
-#define GLCall(x) GLClearError();\
-    x;\
-    ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+#include "Renderer.h"
 
-static void GLClearError() 
-{
-    while (glGetError() != GL_NO_ERROR);
-}
-
-static bool GLLogCall(const char* function, const char* file, int line) {
-    while (GLenum error = glGetError()) 
-    {
-        std::cout << "[OpenGL error] (" << error << ")"  << function << " " << file << ":" << line
-            << std::endl;
-        return false;
-    }
-    return true;
-}
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
+#include "VertexArray.h"
 
 struct ShaderProgramSource
 {
@@ -139,7 +125,7 @@ int main(void)
 
     //OpenGL version
     std::cout << glGetString(GL_VERSION) << std::endl;
-
+    {
     //vertex buffer
     float positions[] = {
         -0.5f, -0.5f, //0
@@ -156,28 +142,23 @@ int main(void)
     };
 
     //vetex array
-    unsigned int vao;
-    GLCall(glGenVertexArrays(1, &vao));
-    GLCall(glBindVertexArray(vao));
+   
 
     //vertex buffer
-    unsigned int buffer;
-    glGenBuffers(1, &buffer);
-    GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
-    GLCall(glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
-
+    VertexArray va;
+    VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+    
     //vertex attributes, layout of data, links buffer with vao
-    glEnableVertexAttribArray(0);
-    GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
-
-    //index buffer
-    unsigned int ibo;
-    glGenBuffers(1, &ibo);
-    GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
-    GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6  * sizeof(unsigned int), indices, GL_STATIC_DRAW));
+    VertexBufferLayout layout;
+    layout.Push<float>(2);
+    va.AddBuffer(vb, layout);
 
     
 
+    //index buffer
+    IndexBuffer ib(indices, 6);
+
+   
     ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
     std::cout << "vertex" << std::endl;
     std::cout << source.VeretexSource << std::endl;
@@ -193,7 +174,7 @@ int main(void)
     GLCall(glUniform4f(location, 0.9f, 0.3f, 0.8f, 1.0f));
 
     //unbind buffers
-    GLCall(glBindVertexArray(0));
+    va.Unbind();
     GLCall(glUseProgram(0));
     GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
     GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
@@ -209,8 +190,8 @@ int main(void)
         GLCall(glUseProgram(shader));
         GLCall(glUniform4f(location, red, 0.3f, 0.8f, 1.0f));
 
-        GLCall(glBindVertexArray(vao));
-        GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
+        va.Bind();
+        ib.Bind();
 
         GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
         
@@ -227,6 +208,7 @@ int main(void)
     }
 
     glDeleteProgram(shader);
+    }
 
     glfwTerminate();
     return 0;
